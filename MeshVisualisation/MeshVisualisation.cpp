@@ -47,24 +47,24 @@ float startzoff;
 
 int main(int argc, char** argv)
 {
-	char s[] = "./bones.txt";
-	readcloud(s);
+	char path[] = "./bones.txt";
+	readcloud(path);
 	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH); // Doublebuffer for animation
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
 	glutInitWindowSize(800, 800);
 	glutInitWindowPosition(400, 100);
-	glutCreateWindow("Mesh Visualization");
+	glutCreateWindow("Mesh Visualisation");
 	init();
 	glutMouseFunc(mouse);
 	glutMotionFunc(mouseactive);
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);
 	glutKeyboardFunc(key);
-	printf("\n\nSTEUERUNG\nAnzeigemodi:\n");
-	printf("'0' nur Box\n'1' Points, Farbwerte nach Koordinate\n'2' Wireframe, Farbwerte nach Koordinate\n'3' Filled, Farbwerte nach Koordinate\n");
-	printf("'4' Points, Farbwerte aus Datei\n'5' Wireframe, Farbwerte aus Datei\n'6' Filled, Farbwerte aus Datei\n\n\n");
-	printf("Transformationen:\n linke Maustaste und x-y-Bewegung -> Rotation\n mittlere Maustaste und y-Richtung -> Zoom (entspricht einer Skalierung)\n");
-	printf(" rechte Maustaste und x-y-Bewegung -> Translation\n\n");
+	printf("\n\CONTROL\nDisplay modes:\n");
+	printf("'0' only the Box\n'1' Points, color values by coordinate\n'2' Wireframe, color values by coordinate\n'3' Filled, color values by coordinate\n");
+	printf("'4' Points, color values by file\n'5' Wireframe, color values by file\n'6' Filled, color values by file\n\n\n");
+	printf("Transformations:\n left mouse button and x-y movement -> rotation\n middle mouse button and y-direction -> zoom (scaling)\n");
+	printf(" right mouse button and x-y movement -> translation\n\n");
 	glutMainLoop();
 	return 0;
 }
@@ -77,42 +77,37 @@ void displaycloud(int modus)
 		range[i] = cpointsmax[i] - cpointsmin[i];
 	if (modus > 0)
 	{
-		if (modus == 1 || modus == 4) { // Display only the vertices
+		if (modus == 1 || modus == 4)
+		{
+			// Display only the vertices
 			glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
 		}
-		if (modus == 2 || modus == 5) { // Display the outlines of the polygons
+		if (modus == 2 || modus == 5)
+		{
+			// Display the outlines of the polygons
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		}
-		if (modus == 3 || modus == 6) { // Display filled polygons
+		if (modus == 3 || modus == 6)
+		{
+			// Display filled polygons
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		}
 
-
-		glBegin(GL_TRIANGLES); // using the polygone mode "GL_TRIANGLES"
+		// using the polygone mode "GL_TRIANGLES"
+		glBegin(GL_TRIANGLES);
 
 		for (i = 0; i < maxcoords + 1; i++)
 		{
-			if (modus > 3) { // Displaying colors saved in the mesh file (node wise definition!)
+			if (modus > 3)
+			{
+				// Displaying colors saved in the mesh file (node wise definition!)
 				glColor3f(ccolors[triangle[i] * 3], ccolors[triangle[i] * 3 + 1], ccolors[triangle[i] * 3 + 2]);
 			}
-			else {  // Displaying interpolated colors according to the x-/y-/z-value of the point coordinates (node wise definition!)
+			else
+			{ 
+				// Displaying interpolated colors according to the x-/y-/z-value of the point coordinates (node wise definition!)
 				glColor3f((vertices[triangle[i] * 3] - cpointsmin[0]) / range[0], (vertices[triangle[i] * 3 + 1] - cpointsmin[1]) / range[1], (vertices[triangle[i] * 3 + 2] - cpointsmin[2]) / range[2]);
 			}
-
-
-			// Definition of vertices
-			/////////////////////////////////////////////////////////////////////
-			// TODO: definition of vertices.
-
-			// note the data structures: vertices holds all coordinate components (x,y,z) of all vertices in a 1D array: 
-			// vertex j_x can be accessed via vertices[j*3]
-			// vertex j_y can be accessed via vertices[j*3+1]
-			// vertex j_z can be accessed via vertices[j*3+2]
-
-			// note the data structure: triangle holds the indices into the vertices array (data structure "Knotenliste") in a 1D array 
-			// first triangle consists of the vertices referenced in triangle[0], triangle[1], triangle[2].
-			// note the for loop running over all triangle indices, i.e. with i = 0 => references first vertex of first triangle
-
 
 			glVertex3f(vertices[triangle[i] * 3], vertices[triangle[i] * 3 + 1], vertices[triangle[i] * 3 + 2]);
 		}
@@ -162,7 +157,8 @@ void display(void)
 	glEnd();
 	glPopMatrix();
 	glPopMatrix();
-	glutSwapBuffers(); // Buffer for animation needs to be swapped
+	// Buffer for animation needs to be swapped
+	glutSwapBuffers();
 }
 
 void init(void)
@@ -179,7 +175,6 @@ void init(void)
 	zoom = 1;
 	angle1 = -45;
 	angle2 = 45;
-
 }
 
 
@@ -199,37 +194,39 @@ void timer(int value)
 
 void readcloud(char* filename)
 {
-
 	int i = 0;
 	int j = 0;
-	FILE* f;
+	FILE* file;
 	int abbruch = 0;
 	char str[200] = "";
-	printf("Lese '%s' ein\n", filename);
-	f = fopen(filename, "r");
-	printf("Ueberspringe Kopf...\n");
-	// Kopf Überspringen
-	while (!feof(f) && str[0] != '[')
-		fscanf(f, "%s", str);
-	printf("Lese Punkte ein...\n");
-	//Punkte einlesen
-	while (!feof(f) && abbruch == 0)
+
+	printf("Read file '%s' \n", filename);
+	fopen_s(&file, filename, "r");
+	printf("Skip first Line\n");
+	while (!feof(file) && str[0] != '[')
+		fscanf(file, "%s", str);
+	printf("Read verticy\n");
+
+	// Read verticies
+	while (!feof(file) && abbruch == 0)
 	{
-		//einlesen
 		if (((i + 1) % 3) == 0)
-			fscanf(f, "%f %c", &vertices[i], str);
+			fscanf(file, "%f %c", &vertices[i], str);
 		else
-			fscanf(f, "%f", &vertices[i]);
-		// Extremalwerte initialisieren
+			fscanf(file, "%f", &vertices[i]);
+
+		// Init extreme values
 		if (i < 3)
 		{
 			cpointsmax[i % 3] = vertices[i];
 			cpointsmin[i % 3] = vertices[i];
 		}
-		//Abbruch, wenn alle Punkte 0 sind, (nicht ganz sauber, aber funktioniert, wenn nicht zufällig der Urspung ein gültiger Punkt ist)
+
+		// Stop if all points are 0, (works only if the origin is not a valid point)
 		if (i > 3 && vertices[i - 2] == 0 && vertices[i - 1] == 0 && vertices[i] == 0)
 			abbruch = 1;
-		//Extremalwerte gegebenenfalls erneuern
+
+		// Renew extreme values if necessary
 		if (vertices[i] > cpointsmax[i % 3] && vertices[i] != 0)
 			cpointsmax[i % 3] = vertices[i];
 		if (vertices[i] < cpointsmin[i % 3] && vertices[i] != 0)
@@ -237,39 +234,36 @@ void readcloud(char* filename)
 		i++;
 	}
 	cpoints_n = i - 1;
-	printf("Es wurden %i Vertices gelesen\n", cpoints_n / 3);
-	printf("Koordinaten sind in den Intervallen  [%f,%f]  [%f,%f] [%f,%f]\n\n", cpointsmin[0], cpointsmax[0], cpointsmin[1], cpointsmax[1], cpointsmin[2], cpointsmax[2]);
+	printf("Read %i Vertices\n", cpoints_n / 3);
+	printf("the coordinates are in the intervals  [%f,%f]  [%f,%f] [%f,%f]\n\n", cpointsmin[0], cpointsmax[0], cpointsmin[1], cpointsmax[1], cpointsmin[2], cpointsmax[2]);
 	abbruch = 0; i = 0;
-	//warten, bis es zu den colors geht
-	while (!feof(f) && str[0] != '[')
-		fscanf(f, "%s", str);
-	printf("Lese Farben ein...\n");
-	// Farben einlesen
-	while (!feof(f) && abbruch == 0)
+
+	while (!feof(file) && str[0] != '[')
+		fscanf(file, "%s", str);
+	printf("Read colors\n");
+
+	while (!feof(file) && abbruch == 0)
 	{
-		//einlesen
 		if (((i + 1) % 3) == 0)
-			fscanf(f, "%f %c", &ccolors[i], str);
+			fscanf(file, "%f %c", &ccolors[i], str);
 		else
-			fscanf(f, "%f", &ccolors[i]);
-		//Abbruch, wenn alle farben 0 sind, (nicht ganz sauber, aber funktioniert, wenn nicht zufällig schwarz eine gültige Farbe ist)
+			fscanf(file, "%f", &ccolors[i]);
+		// Stop if all colors are 0, (works only if the origin is not a valid point)
 		if (i > 3 && ccolors[i - 2] == 0 && ccolors[i - 1] == 0 && ccolors[i] == 0)
 			abbruch = 1;
 		i++;
 	}
-	printf("Es wurden %i Farben eingelesen\n\n", (i - 1) / 3);
+	printf("Read %i colors\n\n", (i - 1) / 3);
 	abbruch = 0; i = 0;
-	//warten, bis es zu den koordinaten geht
-	while (!feof(f) && str[0] != '[')
-		fscanf(f, "%s", str);
-	printf("Lese Koordinaten fuer die Dreiecke ein...\n");
-	// Koordinaten einlesen
-	while (!feof(f) && abbruch < 2)
+
+	while (!feof(file) && str[0] != '[')
+		fscanf(file, "%s", str);
+
+	printf("Read coordinates for the triangles...\n");
+	while (!feof(file) && abbruch < 2)
 	{
-		//einlesen
-		fscanf_s(f, "%i %c", &triangle[i], str);
-		//printf("%i\n",ccoord[i]);
-		//Abbruch, wenn alle Dreiecke 0 sind, (nicht ganz sauber, aber funktioniert, wenn nicht zufällig der Urspung ein gültiger Punkt ist)
+		fscanf_s(file, "%i %c", &triangle[i], str);
+		// Stop if all triangles are 0, (works only if the origin is not a valid point)
 		if (triangle[i] == -1)
 		{
 			i--;
@@ -280,14 +274,10 @@ void readcloud(char* filename)
 		i++;
 	}
 	maxcoords = i - 1;
-	printf("Es wurden %i Dreiecke eingelesen\n", (maxcoords + 1) / 3);// drei Punkte bilden ein Dreieck
-	fclose(f);
-	printf("Einlesen beendet\n\n");
+	printf("Read %i triangles\n", (maxcoords + 1) / 3);// drei Punkte bilden ein Dreieck
+	fclose(file);
+	printf("End read data \n\n");
 }
-
-
-
-
 
 void key(unsigned char k, int x, int y);
 void mouseactive(int x, int y)
@@ -362,11 +352,11 @@ void key(unsigned char k, int x, int y)
 		if (k > '0' - 1 && k < '7')
 		{
 			displaymodus = k - '0';
-			printf("Display-Modus: %i\n", displaymodus);
+			printf("Display mode: %i\n", displaymodus);
 		}
 		else
 		{
-			printf("Taste %c mit Steuerzeichen %i nicht belegt\n", k, k);
+			printf("Key %c (%i) is not a valid input\n", k, k);
 		}
 		break;
 	}

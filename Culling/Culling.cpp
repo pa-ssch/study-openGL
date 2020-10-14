@@ -16,9 +16,6 @@ void init(int argc, char** argv) {
 	glMatrixMode(GL_MODELVIEW);
 	glOrtho(-2.0, 2.0, -2.0, 2.0, -2.0, 2.0);
 	gluLookAt(0.25, 0.5, 0.1, 0, 0, 0, 0, 1, 0);
-
-	//glEnable(GL_CULL_FACE);
-	//glCullFace(GL_BACK);
 }
 
 
