@@ -5,6 +5,10 @@ VisualStudioVersion = 16.0.30523.141
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HelloWorld", "HelloWorld\HelloWorld.vcxproj", "{6155BE9F-7C0D-456D-AA0C-C0E81579B911}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Culling", "Culling\Culling.vcxproj", "{3F5A34FC-3080-4C82-BFB5-B194F702B090}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MeshVisualisation", "MeshVisualisation\MeshVisualisation.vcxproj", "{98DFB1B9-B2BB-48D4-8E90-9E6254BAE100}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -15,6 +19,14 @@ Global
 		{6155BE9F-7C0D-456D-AA0C-C0E81579B911}.Debug|x64.Build.0 = Debug|x64
 		{6155BE9F-7C0D-456D-AA0C-C0E81579B911}.Release|x64.ActiveCfg = Release|x64
 		{6155BE9F-7C0D-456D-AA0C-C0E81579B911}.Release|x64.Build.0 = Release|x64
+		{3F5A34FC-3080-4C82-BFB5-B194F702B090}.Debug|x64.ActiveCfg = Debug|x64
+		{3F5A34FC-3080-4C82-BFB5-B194F702B090}.Debug|x64.Build.0 = Debug|x64
+		{3F5A34FC-3080-4C82-BFB5-B194F702B090}.Release|x64.ActiveCfg = Release|x64
+		{3F5A34FC-3080-4C82-BFB5-B194F702B090}.Release|x64.Build.0 = Release|x64
+		{98DFB1B9-B2BB-48D4-8E90-9E6254BAE100}.Debug|x64.ActiveCfg = Debug|x64
+		{98DFB1B9-B2BB-48D4-8E90-9E6254BAE100}.Debug|x64.Build.0 = Debug|x64
+		{98DFB1B9-B2BB-48D4-8E90-9E6254BAE100}.Release|x64.ActiveCfg = Release|x64
+		{98DFB1B9-B2BB-48D4-8E90-9E6254BAE100}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
