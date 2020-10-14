@@ -348,16 +348,17 @@ void key(unsigned char k, int x, int y)
 	case 'q':
 	case 'Q':
 		exit(0);
+	case '1':
+	case '2':
+	case '3':
+	case '4':
+	case '5':
+	case '6':
+		displaymodus = k - '0';
+		printf("Display mode: %i\n", displaymodus);
+		break;
 	default:
-		if (k > '0' - 1 && k < '7')
-		{
-			displaymodus = k - '0';
-			printf("Display mode: %i\n", displaymodus);
-		}
-		else
-		{
-			printf("Key %c (%i) is not a valid input\n", k, k);
-		}
+		printf("Key %c (%i) is not a valid input\n", k, k);
 		break;
 	}
 	glutPostRedisplay();
