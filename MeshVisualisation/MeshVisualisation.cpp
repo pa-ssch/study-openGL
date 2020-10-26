@@ -4,6 +4,8 @@
 
 #pragma warning(disable:4996)
 
+#define ORTHO 1
+#define PERSPECTIVE 2
 
 void mouse(int button, int state, int x, int y);
 void key(unsigned char key, int x, int y);
@@ -37,13 +39,14 @@ const float stepsize = 0.05;
 const float anglestepsize = 0.01;
 int displaymodus = 1;
 int pressedbutton = 0;
-int startx, starty;
+int startx, starty, startz;
 int startangle1;
 int startangle2;
 float startxoff;
 float startyoff;
 float startzoff;
 
+int projType = PERSPECTIVE; // default: perspective projection
 
 int main(int argc, char** argv)
 {
@@ -65,6 +68,8 @@ int main(int argc, char** argv)
 	printf("'4' Points, color values by file\n'5' Wireframe, color values by file\n'6' Filled, color values by file\n\n\n");
 	printf("Transformations:\n left mouse button and x-y movement -> rotation\n middle mouse button and y-direction -> zoom (scaling)\n");
 	printf(" right mouse button and x-y movement -> translation\n\n");
+	printf("Change projection:\n");
+	printf("'o' orthographic projection, 'p' perspective projection \n\n");
 	glutMainLoop();
 	return 0;
 }
@@ -118,17 +123,36 @@ void displaycloud(int modus)
 }
 void display(void)
 {
-	glPushMatrix();
-	gluLookAt(0, -zoom, 0, 0, zoom * zoom + 5, 0, 0.0, 0.0, 1.0);
-	glPushMatrix();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glEnable(GL_DEPTH_TEST);
+
+	switch (projType) {
+	case ORTHO:
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(-2 - zoff, 2 + zoff, -2 - zoff, 2 + zoff, 3, 7);
+
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		gluLookAt(0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+		break;
+
+	case PERSPECTIVE:
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		gluPerspective(45.0, 1.0, 3.0, 7.0);
+
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		gluLookAt(0.0, 0.0, 5.0 + zoff, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+		break;
+	}
+
 	glColor3f(0.0, 0.0, 0.0);
 	// center and rotate
-	glTranslatef(xoff, yoff, zoff);
+	glTranslatef(xoff, yoff, 0);
 	glRotatef(angle2, 1.0, 0.0, 0.0);
-	glRotatef(angle1, 0.0, 0.0, 1.0);
-	glTranslatef(-(cpointsmax[0] - cpointsmin[0]) / 2 - cpointsmin[0], -(cpointsmax[1] - cpointsmin[1]) / 2 - cpointsmin[1], -(cpointsmax[2] - cpointsmin[2]) / 2 - cpointsmin[2]);
+	glRotatef(angle1, 0.0, 1.0, 0.0);
+	
 	//display
 	displaycloud(displaymodus);
 	// draw box
@@ -155,26 +179,22 @@ void display(void)
 	glVertex3f(cpointsmax[0], cpointsmin[1], cpointsmax[2]);
 	glVertex3f(cpointsmax[0], cpointsmin[1], cpointsmin[2]);
 	glEnd();
-	glPopMatrix();
-	glPopMatrix();
+
 	// Buffer for animation needs to be swapped
 	glutSwapBuffers();
 }
 
 void init(void)
 {
+	glEnable(GL_DEPTH_TEST);
 	glClearColor(0.99, 0.99, 0.99, 0.0);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(45.0, 1.0, 1.0, 100.0);
-	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	xoff = 0.0;
-	yoff = (cpointsmax[1] - cpointsmin[1]);
+	yoff = 0;
 	zoff = 0.0;
 	zoom = 1;
-	angle1 = -45;
-	angle2 = 45;
+	angle1 = 90;
+	angle2 = 0;
 }
 
 
@@ -274,9 +294,35 @@ void readcloud(char* filename)
 		i++;
 	}
 	maxcoords = i - 1;
-	printf("Read %i triangles\n", (maxcoords + 1) / 3);// drei Punkte bilden ein Dreieck
+	printf("Read %i triangles\n", (maxcoords + 1) / 3);
 	fclose(file);
 	printf("End read data \n\n");
+
+	for (j = 0; j < cpoints_n; j++) {
+		// normalize
+		vertices[j] = vertices[j] - cpointsmin[j % 3];
+		vertices[j] = 2 * vertices[j] / (cpointsmax[j % 3] - cpointsmin[j % 3]);
+		vertices[j] = vertices[j] - 1;
+	}
+
+	cpointsmin[0] = -1;
+	cpointsmin[1] = -1;
+	cpointsmin[2] = -1;
+
+	cpointsmax[0] = 1;
+	cpointsmax[1] = 1;
+	cpointsmax[2] = 1;
+
+	for (j = 0; j < cpoints_n; j++)
+	{
+		if (j % 3 != 1)
+			continue;
+
+		// swap y with z
+		float swap = vertices[j];
+		vertices[j] = vertices[j + 1];
+		vertices[j + 1] = swap;
+	}
 }
 
 void key(unsigned char k, int x, int y);
@@ -290,11 +336,11 @@ void mouseactive(int x, int y)
 	if (pressedbutton == GLUT_RIGHT_BUTTON)
 	{
 		xoff = startxoff + (float)(x - startx) / 100;
-		zoff = startzoff - (float)(y - starty) / 100;
+		yoff = startyoff + (float)(y - starty) / 100;
 	}
 	if (pressedbutton == GLUT_MIDDLE_BUTTON)
 	{
-		yoff = startyoff + ((float)(y - starty) / 100);
+		zoff = startzoff + ((float)(y - startz) / 100);
 	}
 	glutPostRedisplay();
 }
@@ -305,6 +351,7 @@ void mouse(int button, int state, int x, int y)
 		pressedbutton = button;
 		startx = x;
 		starty = y;
+		startz = y;
 		startangle1 = angle1;
 		startangle2 = angle2;
 		startxoff = xoff;
@@ -348,6 +395,16 @@ void key(unsigned char k, int x, int y)
 	case 'q':
 	case 'Q':
 		exit(0);
+	case 'o':
+		projType = ORTHO;
+		printf("Projektion: ORTHOGRAPHIC\n");
+		glutPostRedisplay();
+		break;
+	case 'p':
+		projType = PERSPECTIVE;
+		printf("Projektion: PERSPECTIVE\n");
+		glutPostRedisplay();
+		break;
 	case '1':
 	case '2':
 	case '3':
