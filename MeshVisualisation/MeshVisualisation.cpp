@@ -19,6 +19,8 @@ void timer(int value);
 void readcloud(char* filename);
 void mouseactive(int x, int y);
 void mouse(int button, int state, int x, int y);
+void setProjection(int projType);
+void setAntiAliasing(int state);
 
 float vertices[3 * 60000];
 float ccolors[3 * 60000];
@@ -48,6 +50,7 @@ float startzoff;
 
 int projType = PERSPECTIVE; // default: perspective projection
 
+int antiAliasing = 0;
 int main(int argc, char** argv)
 {
 	char path[] = "./bones.txt";
@@ -70,6 +73,7 @@ int main(int argc, char** argv)
 	printf(" right mouse button and x-y movement -> translation\n\n");
 	printf("Change projection:\n");
 	printf("'o' orthographic projection, 'p' perspective projection \n\n");
+	printf("'a' to enable/disable Antialiasing\n\n");
 	glutMainLoop();
 	return 0;
 }
@@ -123,7 +127,7 @@ void displaycloud(int modus)
 }
 void display(void)
 {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glPushMatrix();
 
 	switch (projType) {
 	case ORTHO:
@@ -146,6 +150,13 @@ void display(void)
 		gluLookAt(0.0, 0.0, 5.0 + zoff, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 		break;
 	}
+
+	glPushMatrix();
+
+	glClearDepth(1.0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
 
 	glColor3f(0.0, 0.0, 0.0);
 	// center and rotate
@@ -179,6 +190,8 @@ void display(void)
 	glVertex3f(cpointsmax[0], cpointsmin[1], cpointsmax[2]);
 	glVertex3f(cpointsmax[0], cpointsmin[1], cpointsmin[2]);
 	glEnd();
+	glPopMatrix();
+	glPopMatrix();
 
 	// Buffer for animation needs to be swapped
 	glutSwapBuffers();
@@ -186,15 +199,40 @@ void display(void)
 
 void init(void)
 {
-	glEnable(GL_DEPTH_TEST);
+
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+	glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
+	glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+
 	glClearColor(0.99, 0.99, 0.99, 0.0);
 	glLoadIdentity();
 	xoff = 0.0;
-	yoff = 0;
+	yoff = 0.0;
 	zoff = 0.0;
 	zoom = 1;
-	angle1 = 90;
-	angle2 = 0;
+	angle1 = 45;
+	angle2 = 45;
+
+}
+
+
+void setAntiAliasing(int state) {
+	antiAliasing = state;
+
+	// Enable / disable Line/Point/Polygon Antialiasing
+	if (antiAliasing == 1) {
+		glEnable(GL_BLEND);
+		glEnable(GL_LINE_SMOOTH);
+		glEnable(GL_POLYGON_SMOOTH);
+		glEnable(GL_POINT_SMOOTH);
+	}
+	else if (antiAliasing == 0) {
+		glDisable(GL_BLEND);
+		glDisable(GL_LINE_SMOOTH);
+		glDisable(GL_POLYGON_SMOOTH);
+		glDisable(GL_POINT_SMOOTH);
+	}
 }
 
 
@@ -404,6 +442,16 @@ void key(unsigned char k, int x, int y)
 		projType = PERSPECTIVE;
 		printf("Projektion: PERSPECTIVE\n");
 		glutPostRedisplay();
+		break;
+	case 'a':
+		if (antiAliasing == 1) {
+			setAntiAliasing(0);
+			printf("Antialiasing disabled\n");
+		}
+		else {
+			setAntiAliasing(1);
+			printf("Antialiasing enabled\n");
+		}
 		break;
 	case '1':
 	case '2':
