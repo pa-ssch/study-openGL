@@ -23,12 +23,14 @@ void setProjection(int projType);
 void setAntiAliasing(int state);
 
 float vertices[3 * 60000];
+float cvnormals[3 * 60000];
 float ccolors[3 * 60000];
 int triangle[10 * 3 * 60000];
+float cnormals[10 * 3 * 60000];
 int maxcoords = 0;
-float cpointsmax[3];
-float cpointsmin[3];
-int cpoints_n = 0;
+float verticesmax[3];
+float verticesmin[3];
+int vertices_n = 0;
 
 float xoff;
 float yoff;
@@ -49,6 +51,20 @@ float startyoff;
 float startzoff;
 
 int projType = PERSPECTIVE; // default: perspective projection
+int lights = 0;
+int shading = 0;
+float shininess = 2;
+
+// light components colors
+float ambientLightColor[3] = { 0.1, 0.1, 0.1 };
+float diffuseLightColor[3] = { 0.5, 0.5, 0.5 };
+float specularLightColor[3] = { 1.0, 1.0, 1.0};
+
+// light position
+float lightPosition[4] = { 0, 0, 1, 1};
+
+// short cut color white
+float white[3] = { 0.5, 0.5, 0.5 };
 
 int antiAliasing = 0;
 int main(int argc, char** argv)
@@ -73,7 +89,10 @@ int main(int argc, char** argv)
 	printf(" right mouse button and x-y movement -> translation\n\n");
 	printf("Change projection:\n");
 	printf("'o' orthographic projection, 'p' perspective projection \n\n");
-	printf("'a' to enable/disable Antialiasing\n\n");
+	printf("Light option\n");
+	printf("'s' Shading (Flat / Gouraud)\n");
+	printf("'l' Toggle light\n");
+	printf(" '+'/'-' change specular exponent\n\n");
 	glutMainLoop();
 	return 0;
 }
@@ -82,8 +101,16 @@ void displaycloud(int modus)
 {
 	int i = 0;
 	float range[3];
+	float directionVector[3][2];
+	float n[3];
+	float currentColor[3];
+	int counter = 0;
+
+	glEnable(GL_NORMALIZE);
+	glFrontFace(GL_CW);
+
 	for (i = 0; i < 3; i++)
-		range[i] = cpointsmax[i] - cpointsmin[i];
+		range[i] = verticesmax[i] - verticesmin[i];
 	if (modus > 0)
 	{
 		if (modus == 1 || modus == 4)
@@ -110,12 +137,45 @@ void displaycloud(int modus)
 			if (modus > 3)
 			{
 				// Displaying colors saved in the mesh file (node wise definition!)
-				glColor3f(ccolors[triangle[i] * 3], ccolors[triangle[i] * 3 + 1], ccolors[triangle[i] * 3 + 2]);
+				currentColor[0] = ccolors[triangle[i] * 3];
+				currentColor[1] = ccolors[triangle[i] * 3 + 1];
+				currentColor[2] = ccolors[triangle[i] * 3 + 2];
 			}
 			else
 			{ 
 				// Displaying interpolated colors according to the x-/y-/z-value of the point coordinates (node wise definition!)
-				glColor3f((vertices[triangle[i] * 3] - cpointsmin[0]) / range[0], (vertices[triangle[i] * 3 + 1] - cpointsmin[1]) / range[1], (vertices[triangle[i] * 3 + 2] - cpointsmin[2]) / range[2]);
+				currentColor[0] = (vertices[triangle[i] * 3] - verticesmin[0]) / range[0];
+				currentColor[1] = (vertices[triangle[i] * 3 + 1] - verticesmin[1]) / range[1];
+				currentColor[2] = (vertices[triangle[i] * 3 + 2] - verticesmin[2]) / range[2];
+			}
+
+			if (lights == 1) {
+				// Material definition
+				glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, currentColor);
+				glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, currentColor);
+				glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, currentColor);
+				glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shininess);
+			}
+			else {
+				glColor3f(currentColor[0], currentColor[1], currentColor[2]);
+			}
+
+			// for flat shading: one normal per triangle (before defintion of vertices) is sufficient
+			// cnormals contains the surface normal
+			if (counter == 0) {
+				if (shading == 0) {
+					glNormal3f(cnormals[i], cnormals[i + 1], cnormals[i + 2]);
+				}
+			}
+			counter++;
+			if (counter == 3) {
+				counter = 0;
+			}
+
+			// for gouraud shading we need the normal of each vertex
+			// cvnormals contains the vertex normals
+			if (shading == 1) {
+				glNormal3f(cvnormals[triangle[i] * 3], cvnormals[triangle[i] * 3 + 1], cvnormals[triangle[i] * 3 + 2]);
 			}
 
 			glVertex3f(vertices[triangle[i] * 3], vertices[triangle[i] * 3 + 1], vertices[triangle[i] * 3 + 2]);
@@ -127,8 +187,31 @@ void displaycloud(int modus)
 }
 void display(void)
 {
-	glPushMatrix();
+	if (lights == 1) {
+		// light definition
+		glEnable(GL_LIGHT0);
+		glLightfv(GL_LIGHT0, GL_AMBIENT, ambientLightColor);
+		glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLightColor);
+		glLightfv(GL_LIGHT0, GL_SPECULAR, specularLightColor);
+		glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
 
+		glEnable(GL_LIGHTING);
+
+		// shading definition
+		if (shading == 0)
+		{ 
+			// Flat Shading
+			glShadeModel(GL_FLAT);
+		}
+		else if (shading == 1) 
+		{ 
+			// Gouraud Shading
+			glShadeModel(GL_SMOOTH);
+		}
+	}
+	else {
+		glDisable(GL_LIGHTING);
+	}
 	switch (projType) {
 	case ORTHO:
 		glMatrixMode(GL_PROJECTION);
@@ -167,28 +250,32 @@ void display(void)
 	//display
 	displaycloud(displaymodus);
 	// draw box
+	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, white);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, white);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, white);
+	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shininess);
 	glColor3f(0.0, 0.0, 0.0);
 	glBegin(GL_LINE_LOOP);
-	glVertex3f(cpointsmax[0], cpointsmax[1], cpointsmax[2]);
-	glVertex3f(cpointsmin[0], cpointsmax[1], cpointsmax[2]);
-	glVertex3f(cpointsmin[0], cpointsmin[1], cpointsmax[2]);
-	glVertex3f(cpointsmax[0], cpointsmin[1], cpointsmax[2]);
+	glVertex3f(verticesmax[0], verticesmax[1], verticesmax[2]);
+	glVertex3f(verticesmin[0], verticesmax[1], verticesmax[2]);
+	glVertex3f(verticesmin[0], verticesmin[1], verticesmax[2]);
+	glVertex3f(verticesmax[0], verticesmin[1], verticesmax[2]);
 	glEnd();
 	glBegin(GL_LINE_LOOP);
-	glVertex3f(cpointsmax[0], cpointsmax[1], cpointsmin[2]);
-	glVertex3f(cpointsmin[0], cpointsmax[1], cpointsmin[2]);
-	glVertex3f(cpointsmin[0], cpointsmin[1], cpointsmin[2]);
-	glVertex3f(cpointsmax[0], cpointsmin[1], cpointsmin[2]);
+	glVertex3f(verticesmax[0], verticesmax[1], verticesmin[2]);
+	glVertex3f(verticesmin[0], verticesmax[1], verticesmin[2]);
+	glVertex3f(verticesmin[0], verticesmin[1], verticesmin[2]);
+	glVertex3f(verticesmax[0], verticesmin[1], verticesmin[2]);
 	glEnd();
 	glBegin(GL_LINES);
-	glVertex3f(cpointsmax[0], cpointsmax[1], cpointsmax[2]);
-	glVertex3f(cpointsmax[0], cpointsmax[1], cpointsmin[2]);
-	glVertex3f(cpointsmin[0], cpointsmax[1], cpointsmax[2]);
-	glVertex3f(cpointsmin[0], cpointsmax[1], cpointsmin[2]);
-	glVertex3f(cpointsmin[0], cpointsmin[1], cpointsmax[2]);
-	glVertex3f(cpointsmin[0], cpointsmin[1], cpointsmin[2]);
-	glVertex3f(cpointsmax[0], cpointsmin[1], cpointsmax[2]);
-	glVertex3f(cpointsmax[0], cpointsmin[1], cpointsmin[2]);
+	glVertex3f(verticesmax[0], verticesmax[1], verticesmax[2]);
+	glVertex3f(verticesmax[0], verticesmax[1], verticesmin[2]);
+	glVertex3f(verticesmin[0], verticesmax[1], verticesmax[2]);
+	glVertex3f(verticesmin[0], verticesmax[1], verticesmin[2]);
+	glVertex3f(verticesmin[0], verticesmin[1], verticesmax[2]);
+	glVertex3f(verticesmin[0], verticesmin[1], verticesmin[2]);
+	glVertex3f(verticesmax[0], verticesmin[1], verticesmax[2]);
+	glVertex3f(verticesmax[0], verticesmin[1], verticesmin[2]);
 	glEnd();
 	glPopMatrix();
 	glPopMatrix();
@@ -217,24 +304,6 @@ void init(void)
 }
 
 
-void setAntiAliasing(int state) {
-	antiAliasing = state;
-
-	// Enable / disable Line/Point/Polygon Antialiasing
-	if (antiAliasing == 1) {
-		glEnable(GL_BLEND);
-		glEnable(GL_LINE_SMOOTH);
-		glEnable(GL_POLYGON_SMOOTH);
-		glEnable(GL_POINT_SMOOTH);
-	}
-	else if (antiAliasing == 0) {
-		glDisable(GL_BLEND);
-		glDisable(GL_LINE_SMOOTH);
-		glDisable(GL_POLYGON_SMOOTH);
-		glDisable(GL_POINT_SMOOTH);
-	}
-}
-
 
 void reshape(int w, int h)
 {
@@ -255,6 +324,16 @@ void readcloud(char* filename)
 	int i = 0;
 	int j = 0;
 	FILE* file;
+	int k = 0;
+	int numVertices = 0;
+	int counter = 0;
+	float directionVector[3][2];
+	float n[3];
+	float x, y, z;
+	float temp;
+	int index;
+	int indexBegin;
+	int numNeighbouringFaces = 0;
 	int abbruch = 0;
 	char str[200] = "";
 
@@ -276,8 +355,8 @@ void readcloud(char* filename)
 		// Init extreme values
 		if (i < 3)
 		{
-			cpointsmax[i % 3] = vertices[i];
-			cpointsmin[i % 3] = vertices[i];
+			verticesmax[i % 3] = vertices[i];
+			verticesmin[i % 3] = vertices[i];
 		}
 
 		// Stop if all points are 0, (works only if the origin is not a valid point)
@@ -285,15 +364,15 @@ void readcloud(char* filename)
 			abbruch = 1;
 
 		// Renew extreme values if necessary
-		if (vertices[i] > cpointsmax[i % 3] && vertices[i] != 0)
-			cpointsmax[i % 3] = vertices[i];
-		if (vertices[i] < cpointsmin[i % 3] && vertices[i] != 0)
-			cpointsmin[i % 3] = vertices[i];
+		if (vertices[i] > verticesmax[i % 3] && vertices[i] != 0)
+			verticesmax[i % 3] = vertices[i];
+		if (vertices[i] < verticesmin[i % 3] && vertices[i] != 0)
+			verticesmin[i % 3] = vertices[i];
 		i++;
 	}
-	cpoints_n = i - 1;
-	printf("Read %i Vertices\n", cpoints_n / 3);
-	printf("the coordinates are in the intervals  [%f,%f]  [%f,%f] [%f,%f]\n\n", cpointsmin[0], cpointsmax[0], cpointsmin[1], cpointsmax[1], cpointsmin[2], cpointsmax[2]);
+	vertices_n = i - 1;
+	printf("Read %i Vertices\n", vertices_n / 3);
+	printf("the coordinates are in the intervals  [%f,%f]  [%f,%f] [%f,%f]\n\n", verticesmin[0], verticesmax[0], verticesmin[1], verticesmax[1], verticesmin[2], verticesmax[2]);
 	abbruch = 0; i = 0;
 
 	while (!feof(file) && str[0] != '[')
@@ -336,22 +415,22 @@ void readcloud(char* filename)
 	fclose(file);
 	printf("End read data \n\n");
 
-	for (j = 0; j < cpoints_n; j++) {
+	for (j = 0; j < vertices_n; j++) {
 		// normalize
-		vertices[j] = vertices[j] - cpointsmin[j % 3];
-		vertices[j] = 2 * vertices[j] / (cpointsmax[j % 3] - cpointsmin[j % 3]);
+		vertices[j] = vertices[j] - verticesmin[j % 3];
+		vertices[j] = 2 * vertices[j] / (verticesmax[j % 3] - verticesmin[j % 3]);
 		vertices[j] = vertices[j] - 1;
 	}
 
-	cpointsmin[0] = -1;
-	cpointsmin[1] = -1;
-	cpointsmin[2] = -1;
+	verticesmin[0] = -1;
+	verticesmin[1] = -1;
+	verticesmin[2] = -1;
 
-	cpointsmax[0] = 1;
-	cpointsmax[1] = 1;
-	cpointsmax[2] = 1;
+	verticesmax[0] = 1;
+	verticesmax[1] = 1;
+	verticesmax[2] = 1;
 
-	for (j = 0; j < cpoints_n; j++)
+	for (j = 0; j < vertices_n; j++)
 	{
 		if (j % 3 != 1)
 			continue;
@@ -360,6 +439,43 @@ void readcloud(char* filename)
 		float swap = vertices[j];
 		vertices[j] = vertices[j + 1];
 		vertices[j + 1] = swap;
+	}
+	printf("Calculate surface and vertex normals...\n");
+	counter = 0;
+	for (i = 0; i < maxcoords + 1; i++) {
+		if (counter == 0) {
+			directionVector[0][0] = vertices[triangle[i + 1] * 3] - vertices[triangle[i] * 3];
+			directionVector[1][0] = vertices[triangle[i + 1] * 3 + 1] - vertices[triangle[i] * 3 + 1];
+			directionVector[2][0] = vertices[triangle[i + 1] * 3 + 2] - vertices[triangle[i] * 3 + 2];
+
+			directionVector[0][1] = vertices[triangle[i + 2] * 3] - vertices[triangle[i] * 3];
+			directionVector[1][1] = vertices[triangle[i + 2] * 3 + 1] - vertices[triangle[i] * 3 + 1];
+			directionVector[2][1] = vertices[triangle[i + 2] * 3 + 2] - vertices[triangle[i] * 3 + 2];
+
+			n[0] = (directionVector[1][0] * directionVector[2][1]) - (directionVector[2][0] * directionVector[1][1]);
+			n[1] = (directionVector[2][0] * directionVector[0][1]) - (directionVector[0][0] * directionVector[2][1]);
+			n[2] = (directionVector[0][0] * directionVector[1][1]) - (directionVector[1][0] * directionVector[0][1]);
+
+			cnormals[i] = n[0];
+			cnormals[i + 1] = n[1];
+			cnormals[i + 2] = n[2];
+
+			cvnormals[triangle[i] * 3] = cvnormals[triangle[i] * 3] + n[0];
+			cvnormals[triangle[i] * 3 + 1] = cvnormals[triangle[i] * 3 + 1] + n[1];
+			cvnormals[triangle[i] * 3 + 2] = cvnormals[triangle[i] * 3 + 2] + n[2];
+
+			cvnormals[triangle[i + 1] * 3] = cvnormals[triangle[i + 1] * 3] + n[0];
+			cvnormals[triangle[i + 1] * 3 + 1] = cvnormals[triangle[i + 1] * 3 + 1] + n[1];
+			cvnormals[triangle[i + 1] * 3 + 2] = cvnormals[triangle[i + 1] * 3 + 2] + n[2];
+
+			cvnormals[triangle[i + 2] * 3] = cvnormals[triangle[i + 2] * 3] + n[0];
+			cvnormals[triangle[i + 2] * 3 + 1] = cvnormals[triangle[i + 2] * 3 + 1] + n[1];
+			cvnormals[triangle[i + 2] * 3 + 2] = cvnormals[triangle[i + 2] * 3 + 2] + n[2];
+		}
+		counter++;
+		if (counter == 3) {
+			counter = 0;
+		}
 	}
 }
 
@@ -443,14 +559,28 @@ void key(unsigned char k, int x, int y)
 		printf("Projektion: PERSPECTIVE\n");
 		glutPostRedisplay();
 		break;
-	case 'a':
-		if (antiAliasing == 1) {
-			setAntiAliasing(0);
-			printf("Antialiasing disabled\n");
+	case 'l':
+		if (lights == 0)
+			lights = 1;
+		else
+			lights = 0;
+		break;
+	case '+':
+		shininess += 0.5;
+		printf("Shininess: %f\n", shininess);
+		break;
+	case '-':
+		shininess -= 0.5;
+		printf("Shininess: %f\n", shininess);
+		break;
+	case 's':
+		if (shading == 1) {
+			shading = 0;
+			printf("Shading = FLAT\n");
 		}
-		else {
-			setAntiAliasing(1);
-			printf("Antialiasing enabled\n");
+		else if (shading == 0) {
+			shading = 1;
+			printf("Shading = GOURAUD\n");
 		}
 		break;
 	case '1':
