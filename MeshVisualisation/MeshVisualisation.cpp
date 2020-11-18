@@ -7,6 +7,10 @@
 #define ORTHO 1
 #define PERSPECTIVE 2
 
+// Width & height of texture
+#define HEIGHT 512
+#define WIDTH 512
+
 void mouse(int button, int state, int x, int y);
 void key(unsigned char key, int x, int y);
 void init(void);
@@ -50,10 +54,12 @@ float startxoff;
 float startyoff;
 float startzoff;
 
+GLubyte bitmapImage[HEIGHT][WIDTH][4];
 int projType = PERSPECTIVE; // default: perspective projection
 int lights = 0;
 int shading = 0;
 float shininess = 2;
+int textureMode = 1;
 
 // light components colors
 float ambientLightColor[3] = { 0.1, 0.1, 0.1 };
@@ -84,7 +90,7 @@ int main(int argc, char** argv)
 	glutKeyboardFunc(key);
 	printf("\n\CONTROL\nDisplay modes:\n");
 	printf("'0' only the Box\n'1' Points, color values by coordinate\n'2' Wireframe, color values by coordinate\n'3' Filled, color values by coordinate\n");
-	printf("'4' Points, color values by file\n'5' Wireframe, color values by file\n'6' Filled, color values by file\n\n\n");
+	printf("'4' Points, color values by file\n'5' Wireframe, color values by file\n'6' Filled, color values by file\n'7' Filled, color values by file + texture\n\n\n");
 	printf("Transformations:\n left mouse button and x-y movement -> rotation\n middle mouse button and y-direction -> zoom (scaling)\n");
 	printf(" right mouse button and x-y movement -> translation\n\n");
 	printf("Change projection:\n");
@@ -92,9 +98,32 @@ int main(int argc, char** argv)
 	printf("Light option\n");
 	printf("'s' Shading (Flat / Gouraud)\n");
 	printf("'l' Toggle light\n");
-	printf(" '+'/'-' change specular exponent\n\n");
+	printf("'+'/'-' change specular exponent\n\n");
+	printf("Texture options\n");
+	printf("'t' change automatic texture (Object Linear / Eye Linear)\n\n");
 	glutMainLoop();
 	return 0;
+}
+
+
+void readBitmap(void) {
+	int i, j, k;
+	GLubyte c;
+
+	FILE *img;
+	img = fopen("./boneTexture.png", "rb");
+	fseek(img, sizeof(unsigned char) * 54, 0); // offset to pixel data
+
+	for (i = 0; i < HEIGHT; i++) {
+		for (j = 0; j < WIDTH; j++) {
+			for (k = 0; k < 3; k++) {
+				fread(&c, sizeof(GLubyte), 1, img);
+				bitmapImage[i][j][k] = (GLubyte)c;
+			}
+			bitmapImage[i][j][3] = (GLubyte)255;
+		}
+	}
+	fclose(img);
 }
 
 
@@ -126,10 +155,17 @@ void displaycloud(int modus)
 			// Display the outlines of the polygons
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		}
-		if (modus == 3 || modus == 6)
+		if (modus == 3 || modus == 6 || modus == 7)
 		{
 			// Display filled polygons
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		}
+		if (modus == 7) {
+			// Display texture
+			glEnable(GL_TEXTURE_2D);
+		}
+		else {
+			glDisable(GL_TEXTURE_2D);
 		}
 
 		// using the polygone mode "GL_TRIANGLES"
@@ -190,6 +226,27 @@ void displaycloud(int modus)
 }
 void display(void)
 {
+	// automatic generation of texture coordinates (object/eye linear)
+
+	// Define s and t planes
+	GLfloat s_plane[] = { 0,0,1,0 };
+	GLfloat t_plane[] = { 0,1,0,0 };
+
+	if (textureMode == 1) {
+		// Object linear
+		glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_OBJECT_LINEAR);
+		glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_OBJECT_LINEAR);
+	}
+	else if (textureMode == 2)
+		{
+		// eye linear
+		glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_EYE_LINEAR);
+		glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_EYE_LINEAR);
+	}
+
+	glTexGenfv(GL_S, GL_OBJECT_PLANE, s_plane);
+	glTexGenfv(GL_T, GL_OBJECT_PLANE, t_plane);
+
 	if (lights == 1) {
 		// light definition
 		glEnable(GL_LIGHT0);
@@ -304,6 +361,26 @@ void init(void)
 	angle1 = 45;
 	angle2 = 45;
 
+	// Read bitmap file
+	readBitmap();
+
+	// Texture wrap settings
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	// Filter settings
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	// Connecting lighting and texture
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+	// Initialize texture
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, WIDTH, HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmapImage);
+
+	// enable automatic texture generation
+	glEnable(GL_TEXTURE_GEN_S);
+	glEnable(GL_TEXTURE_GEN_T);
 }
 
 
@@ -312,14 +389,6 @@ void reshape(int w, int h)
 {
 	glViewport(0, 0, w, h);
 	glClear(GL_COLOR_BUFFER_BIT);
-}
-
-void idle()
-{
-}
-
-void timer(int value)
-{
 }
 
 void readcloud(char* filename)
@@ -501,6 +570,7 @@ void mouseactive(int x, int y)
 	}
 	glutPostRedisplay();
 }
+
 void mouse(int button, int state, int x, int y)
 {
 	if (state == GLUT_DOWN)
@@ -517,29 +587,6 @@ void mouse(int button, int state, int x, int y)
 	}
 	else
 		pressedbutton = 0;
-
-}
-
-
-void MainMenu(int value)
-{
-	switch (value) {
-
-	case 2:
-		key('q', 0, 0);
-		break;
-
-	}
-}
-
-void
-submenu1(int value)
-{
-}
-
-
-void define_menu()
-{
 }
 
 void key(unsigned char k, int x, int y)
@@ -586,12 +633,23 @@ void key(unsigned char k, int x, int y)
 			printf("Shading = GOURAUD\n");
 		}
 		break;
+	case 't':
+		if (textureMode == 1) {
+			textureMode = 2;
+			printf("Texture Mode = EYE LINEAR\n");
+		}
+		else if (textureMode == 2) {
+			textureMode = 1;
+			printf("Texture Mode = OBJECT LINEAR\n");
+		}
+		break;
 	case '1':
 	case '2':
 	case '3':
 	case '4':
 	case '5':
 	case '6':
+	case '7':
 		displaymodus = k - '0';
 		printf("Display mode: %i\n", displaymodus);
 		break;
