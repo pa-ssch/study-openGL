@@ -97,6 +97,7 @@ int main(int argc, char** argv)
 	return 0;
 }
 
+
 void displaycloud(int modus)
 {
 	int i = 0;
@@ -111,6 +112,8 @@ void displaycloud(int modus)
 
 	for (i = 0; i < 3; i++)
 		range[i] = verticesmax[i] - verticesmin[i];
+
+
 	if (modus > 0)
 	{
 		if (modus == 1 || modus == 4)
