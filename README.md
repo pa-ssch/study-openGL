@@ -1,5 +1,7 @@
 # study-openGL
 
+This Repository contains the solutions to exercises of the "Baden-Württemberg Cooperative State University Karlsruhe" for the "Computergrafik" lesson. For copyright reasons, the exercise descriptions are not included.
+
 ## freeglut installation (Windows x64)
 1. Create the folder freeglut in the Project directory.
 2. [Download the freeglut binaries.](https://www.transmissionzero.co.uk/software/freeglut-devel/)
